@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-yx.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-yx.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="/lib/pace/pace-theme-center-atom.min.css">
+  <script src="/lib/pace/pace.min.js"></script>
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yuexianhu.gitee.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"./public/search.xml"};
+  </script>
+
+  <meta name="description" content="本文主要纪录CentOS7安装MySQL5.7，数据库的字符集设置，设置防火墙端口，以及创建删除用户并授权等操作。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="CentOS7安装MySQL5.7">
+<meta property="og:url" content="https://yuexianhu.gitee.io/article/b2a45c8d.html">
+<meta property="og:site_name" content="YueXian">
+<meta property="og:description" content="本文主要纪录CentOS7安装MySQL5.7，数据库的字符集设置，设置防火墙端口，以及创建删除用户并授权等操作。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gitee.com/YueXianHu/images/raw/master/img/MySQL-CentOS7%E5%AE%89%E8%A3%85MySQL5.7_1.png">
+<meta property="og:image" content="https://gitee.com/YueXianHu/images/raw/master/img/MySQL-CentOS7%E5%AE%89%E8%A3%85MySQL5.7_2.png">
+<meta property="og:image" content="https://gitee.com/YueXianHu/images/raw/master/img/MySQL-CentOS7%E5%AE%89%E8%A3%85MySQL5.7_3.png">
+<meta property="og:image" content="https://gitee.com/YueXianHu/images/raw/master/img/MySQL-CentOS7%E5%AE%89%E8%A3%85MySQL5.7_4.png">
+<meta property="og:image" content="https://gitee.com/YueXianHu/images/raw/master/img/MySQL-CentOS7%E5%AE%89%E8%A3%85MySQL5.7_5.png">
+<meta property="og:image" content="https://gitee.com/YueXianHu/images/raw/master/img/MySQL-CentOS7%E5%AE%89%E8%A3%85MySQL5.7_6.png">
+<meta property="og:image" content="https://gitee.com/YueXianHu/images/raw/master/img/MySQL-CentOS7%E5%AE%89%E8%A3%85MySQL5.7_7.png">
+<meta property="article:published_time" content="2020-07-02T14:01:50.000Z">
+<meta property="article:modified_time" content="2022-03-18T09:52:54.709Z">
+<meta property="article:author" content="YueXian">
+<meta property="article:tag" content="MySQL">
+<meta property="article:tag" content="Linux">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gitee.com/YueXianHu/images/raw/master/img/MySQL-CentOS7%E5%AE%89%E8%A3%85MySQL5.7_1.png">
+
+<link rel="canonical" href="https://yuexianhu.gitee.io/article/b2a45c8d.html">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>CentOS7安装MySQL5.7 | YueXian</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">YueXian</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">YueXian的博客</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://yuexianhu.gitee.io/article/b2a45c8d.html">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar-yx.png">
+      <meta itemprop="name" content="YueXian">
+      <meta itemprop="description" content="关山难越,谁悲失路之人;萍水相逢,尽是他乡之客!">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="YueXian">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          CentOS7安装MySQL5.7
+        </h1>
+
+        <div class="post-meta">
+
+          
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-07-02 22:01:50" itemprop="dateCreated datePublished" datetime="2020-07-02T22:01:50+08:00">2020-07-02</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-03-18 17:52:54" itemprop="dateModified" datetime="2022-03-18T17:52:54+08:00">2022-03-18</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/MySQL/" itemprop="url" rel="index"><span itemprop="name">MySQL</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>3.8k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>7 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>本文主要纪录CentOS7安装MySQL5.7，数据库的字符集设置，设置防火墙端口，以及创建删除用户并授权等操作。</p>
+<!-- 前言 -->
+
+
+
+<span id="more"></span>
+
+<h2 id="MySQL下载"><a href="#MySQL下载" class="headerlink" title="MySQL下载"></a>MySQL下载</h2><ul>
+<li>下载地址： <a target="_blank" rel="noopener" href="https://downloads.mysql.com/archives/community/">https://downloads.mysql.com/archives/community/</a></li>
+</ul>
+<p><img src="https://gitee.com/YueXianHu/images/raw/master/img/MySQL-CentOS7%E5%AE%89%E8%A3%85MySQL5.7_1.png" alt="1.png"></p>
+<ul>
+<li>共需要下载五个软件包<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">mysql</span>-community-common-<span class="number">5</span>.<span class="number">7</span>.<span class="number">29</span>-<span class="number">1</span>.el7.x86_64.rpm</span><br><span class="line"><span class="attribute">mysql</span>-community-libs-<span class="number">5</span>.<span class="number">7</span>.<span class="number">29</span>-<span class="number">1</span>.el7.x86_64.rpm</span><br><span class="line"><span class="attribute">mysql</span>-community-client-<span class="number">5</span>.<span class="number">7</span>.<span class="number">29</span>-<span class="number">1</span>.el7.x86_64.rpm</span><br><span class="line"><span class="attribute">mysql</span>-community-server-<span class="number">5</span>.<span class="number">7</span>.<span class="number">29</span>-<span class="number">1</span>.el7.x86_64.rpm</span><br><span class="line"><span class="attribute">mysql</span>-community-devel-<span class="number">5</span>.<span class="number">7</span>.<span class="number">29</span>-<span class="number">1</span>.el7.x86_64.rpm</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="环境检测"><a href="#环境检测" class="headerlink" title="环境检测"></a>环境检测</h2><ol>
+<li><p>检测系统是否自带Mysql</p>
+<figure class="highlight 1c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">rpm -qa<span class="string">|grep mysql</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#如存在进行强行卸载</span></span><br><span class="line">rpm -e --nodeps mysql-libs</span><br></pre></td></tr></table></figure></li>
+<li><p>检测系统是否自带mariadb</p>
+<figure class="highlight 1c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">rpm -qa<span class="string">|grep mariadb</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#如存在进行强行卸载</span></span><br><span class="line">rpm -e --nodeps mariadb-libs</span><br></pre></td></tr></table></figure></li>
+<li><p>检测mysql依赖环境</p>
+<figure class="highlight 1c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">rpm -qa<span class="string">|grep libaio</span></span><br><span class="line"><span class="meta"># 如未安装，进行安装</span></span><br><span class="line">yum install libaio</span><br><span class="line"></span><br><span class="line">rpm -qa<span class="string">|grep net-tools</span></span><br><span class="line"><span class="meta"># 如未安装，进行安装</span></span><br><span class="line">yum install net-tools</span><br></pre></td></tr></table></figure></li>
+<li><p>查看tmp权限</p>
+</li>
+</ol>
+<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">ll</span> /</span><br></pre></td></tr></table></figure>
+
+<p><img src="https://gitee.com/YueXianHu/images/raw/master/img/MySQL-CentOS7%E5%AE%89%E8%A3%85MySQL5.7_2.png" alt="2.png"></p>
+<h2 id="安装"><a href="#安装" class="headerlink" title="安装"></a>安装</h2><ol>
+<li><p>按顺序逐个安装rpm</p>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># i: 安装    v：信息    h:进度条</span></span><br><span class="line"><span class="attribute">rpm</span> -ivh mysql-community-common-<span class="number">5</span>.<span class="number">7</span>.<span class="number">29</span>-<span class="number">1</span>.el7.x86_64.rpm</span><br><span class="line"><span class="attribute">rpm</span> -ivh mysql-community-libs-<span class="number">5</span>.<span class="number">7</span>.<span class="number">29</span>-<span class="number">1</span>.el7.x86_64.rpm</span><br><span class="line"><span class="attribute">rpm</span> -ivh mysql-community-client-<span class="number">5</span>.<span class="number">7</span>.<span class="number">29</span>-<span class="number">1</span>.el7.x86_64.rpm</span><br><span class="line"><span class="attribute">rpm</span> -ivh mysql-community-server-<span class="number">5</span>.<span class="number">7</span>.<span class="number">29</span>-<span class="number">1</span>.el7.x86_64.rpm</span><br><span class="line"><span class="attribute">rpm</span> -ivh mysql-community-devel-<span class="number">5</span>.<span class="number">7</span>.<span class="number">29</span>-<span class="number">1</span>.el7.x86_64.rpm</span><br></pre></td></tr></table></figure></li>
+<li><p>安装完成后，查看版本，并启动服务查看密码</p>
+<figure class="highlight applescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#  查看版本</span></span><br><span class="line">mysqladmin <span class="comment">--version</span></span><br></pre></td></tr></table></figure></li>
+<li><p>mysql服务初始化</p>
+<figure class="highlight brainfuck"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">mysqld</span> <span class="literal">--</span><span class="comment">initialize</span> <span class="literal">--</span><span class="comment">user=mysql</span></span><br></pre></td></tr></table></figure></li>
+<li><p>查看首次安装后，mysql默认生成的root密码</p>
+<figure class="highlight 1c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#  查看密码</span></span><br><span class="line">cat /var/<span class="built_in">log</span>/mysqld.<span class="built_in">log</span>  <span class="string">| grep password</span></span><br></pre></td></tr></table></figure></li>
+</ol>
+<p><img src="https://gitee.com/YueXianHu/images/raw/master/img/MySQL-CentOS7%E5%AE%89%E8%A3%85MySQL5.7_3.png" alt="3.png"></p>
+<ol start="5">
+<li>安装完成后启动mysql服务<figure class="highlight nsis"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#  启动服务</span></span><br><span class="line"><span class="params">system</span>ctl start mysqld</span><br><span class="line"><span class="comment">#  查看状态</span></span><br><span class="line"><span class="params">system</span>ctl status mysqld</span><br></pre></td></tr></table></figure></li>
+</ol>
+<p><img src="https://gitee.com/YueXianHu/images/raw/master/img/MySQL-CentOS7%E5%AE%89%E8%A3%85MySQL5.7_4.png" alt="4.png"></p>
+<ol start="6">
+<li>登录数据库，并修改数据库密码。输入日志中生成的密码。<figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">mysql -u root -p</span><br><span class="line"></span><br><span class="line"># 修改密码</span><br><span class="line">mysql&gt; <span class="keyword">ALTER</span> <span class="keyword">USER</span> <span class="string">&#x27;root&#x27;</span>@<span class="string">&#x27;localhost&#x27;</span> IDENTIFIED <span class="keyword">BY</span> <span class="string">&#x27;new password&#x27;</span>;</span><br></pre></td></tr></table></figure></li>
+</ol>
+<p><img src="https://gitee.com/YueXianHu/images/raw/master/img/MySQL-CentOS7%E5%AE%89%E8%A3%85MySQL5.7_5.png" alt="5.png"></p>
+<ol start="7">
+<li>退出登录</li>
+</ol>
+<figure class="highlight jboss-cli"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 退出登录</span></span><br><span class="line">mysql&gt; <span class="keyword">quit</span>;</span><br></pre></td></tr></table></figure>
+
+<ol start="8">
+<li><p>测试</p>
+<figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"># 创建数据库</span><br><span class="line">mysql&gt; <span class="keyword">create</span> <span class="keyword">database</span> mydb;</span><br><span class="line"># 使用新建的数据库</span><br><span class="line">mysql&gt; <span class="keyword">user</span> mydb</span><br><span class="line"># 创建表</span><br><span class="line">mysql&gt; <span class="keyword">create</span> <span class="keyword">table</span> mytbl (id <span class="type">int</span>, <span class="type">name</span> <span class="type">varchar</span>(<span class="number">20</span>));</span><br></pre></td></tr></table></figure></li>
+<li><p>查看mysql是否是自启动。默认为自启动</p>
+<figure class="highlight dsconfig"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="string">systemctl</span> <span class="built_in">list-unit-files</span> | <span class="string">grep</span> <span class="string">mysqld</span></span><br></pre></td></tr></table></figure></li>
+</ol>
+<p><img src="https://gitee.com/YueXianHu/images/raw/master/img/MySQL-CentOS7%E5%AE%89%E8%A3%85MySQL5.7_6.png" alt="6.png"></p>
+<p>如果不是自启动可以通过一下方式设置开机启动。</p>
+<figure class="highlight nsis"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="params">system</span>ctl enable mysqld</span><br><span class="line"><span class="params">system</span>ctl daemon-reload</span><br></pre></td></tr></table></figure>
+
+<h2 id="字符集"><a href="#字符集" class="headerlink" title="字符集"></a>字符集</h2><ol>
+<li>配置mysql默认编码为utf-8<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">vim <span class="regexp">/etc/my</span>.cnf</span><br><span class="line"></span><br><span class="line"><span class="comment"># 在最后加上中文字符集配置</span></span><br><span class="line">character_set_server=utf8</span><br><span class="line"></span><br><span class="line"><span class="comment"># 重启mysql</span></span><br><span class="line">systemctl restart mysqld</span><br></pre></td></tr></table></figure></li>
+</ol>
+<p>登录root用户查看编码</p>
+<figure class="highlight gams"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show <span class="keyword">variables</span> like <span class="comment">&#x27;%character%&#x27;</span>;</span><br></pre></td></tr></table></figure>
+
+<p><img src="https://gitee.com/YueXianHu/images/raw/master/img/MySQL-CentOS7%E5%AE%89%E8%A3%85MySQL5.7_7.png" alt="7.png"></p>
+<ol start="2">
+<li>已生成的库表字符集更改<figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"># 查看已创建数据库的字符集</span><br><span class="line">mysql&gt; <span class="keyword">show</span> <span class="keyword">create</span> <span class="keyword">database</span> mydb;</span><br><span class="line"></span><br><span class="line"># 修改数据库的字符集</span><br><span class="line">mysql&gt; <span class="keyword">alter</span> <span class="keyword">database</span> mydb <span class="type">character</span> <span class="keyword">set</span> <span class="string">&#x27;utf8&#x27;</span>;</span><br><span class="line"># 修改表的字符集</span><br><span class="line">mysql&gt; <span class="keyword">alter</span> <span class="keyword">table</span> mytbl convert <span class="keyword">to</span> <span class="type">character</span> <span class="keyword">set</span> <span class="string">&#x27;utf8&#x27;</span>;</span><br></pre></td></tr></table></figure></li>
+</ol>
+<h2 id="防火墙"><a href="#防火墙" class="headerlink" title="防火墙"></a>防火墙</h2><p><strong>如果远程连接需要开放端口</strong></p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看防火墙开放端口列表</span></span><br><span class="line"> firewall-<span class="keyword">cmd</span><span class="language-bash"> --list-all</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 防火墙开放3306端口</span></span><br><span class="line">firewall-<span class="keyword">cmd</span><span class="language-bash"> --add-port=3306/tcp --permanent</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 重启防火墙</span></span><br><span class="line"> firewall-<span class="keyword">cmd</span><span class="language-bash"> --reload</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="权限"><a href="#权限" class="headerlink" title="权限"></a>权限</h2><ol>
+<li><p>查看系统用户表</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 切换到系统数据库</span></span><br><span class="line">mysql&gt; use mysql</span><br><span class="line"></span><br><span class="line"><span class="comment"># 列式显示数据</span></span><br><span class="line">mysql&gt; select * <span class="keyword">from</span> <span class="keyword">user</span>\G;</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看地址，用户和密码。</span></span><br><span class="line">mysql&gt; select host,<span class="keyword">user</span>,authentication_string <span class="keyword">from</span> <span class="keyword">user</span>;</span><br></pre></td></tr></table></figure></li>
+<li><p>创建用户<br>远程登录的用户无法在本地登录。</p>
+<figure class="highlight livecodeserver"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">mysql -u root -p </span><br><span class="line">mysql&gt; <span class="built_in">create</span> user <span class="string">&#x27;test&#x27;</span>@<span class="string">&#x27;localhost&#x27;</span> identified <span class="keyword">by</span> <span class="string">&#x27;test_local123&#x27;</span>;  <span class="comment">#本地登录 </span></span><br><span class="line">mysql&gt; <span class="built_in">create</span> user <span class="string">&#x27;test&#x27;</span>@<span class="string">&#x27;%&#x27;</span> identified <span class="keyword">by</span> <span class="string">&#x27;test_remote123&#x27;</span>; <span class="comment">#远程登录 </span></span><br><span class="line">quit </span><br><span class="line">mysql -u test -p <span class="comment">#测试是否创建成功</span></span><br></pre></td></tr></table></figure></li>
+</ol>
+<p>3.为用户授权</p>
+<ul>
+<li>授权格式：grant 权限 on <a target="_blank" rel="noopener" href="http://lib.csdn.net/base/mysql" title="MySQL知识库">数据库</a>.* to 用户名@登录主机 identified by ‘密码’;</li>
+</ul>
+<figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">dmysql -u root -p</span><br><span class="line"></span><br><span class="line"># 创建数据库</span><br><span class="line">mysql&gt; <span class="keyword">create</span> <span class="keyword">database</span> testDB; </span><br><span class="line">mysql&gt; <span class="keyword">create</span> <span class="keyword">database</span> testDB <span class="keyword">default</span> charset utf8 <span class="keyword">collate</span> utf8_general_ci;</span><br><span class="line"></span><br><span class="line"># 授权test用户拥有testDB数据库的所有权限：</span><br><span class="line">mysql&gt; <span class="keyword">grant</span> <span class="keyword">all</span> <span class="keyword">privileges</span> <span class="keyword">on</span> testdb.* <span class="keyword">to</span> <span class="string">&#x27;test_auth&#x27;</span>@<span class="string">&#x27;localhost&#x27;</span> identified <span class="keyword">by</span> <span class="string">&#x27;test_auth_local123&#x27;</span>;    #本地登录 </span><br><span class="line">mysql&gt; flush <span class="keyword">privileges</span>;    #刷新系统权限表</span><br><span class="line"></span><br><span class="line">mysql&gt; <span class="keyword">grant</span> <span class="keyword">all</span> <span class="keyword">privileges</span> <span class="keyword">on</span> testdb.* <span class="keyword">to</span> <span class="string">&#x27;test_auth&#x27;</span>@<span class="string">&#x27;%&#x27;</span> identified <span class="keyword">by</span> <span class="string">&#x27;test_auth_remote123&#x27;</span>;    #远程登录 </span><br><span class="line">mysql&gt; flush <span class="keyword">privileges</span>; #刷新系统权限表</span><br><span class="line"></span><br><span class="line"># 指定部分权限给用户:</span><br><span class="line">mysql&gt; <span class="keyword">grant</span> <span class="keyword">select</span>,<span class="keyword">update</span> <span class="keyword">on</span> testDB.* <span class="keyword">to</span> <span class="string">&#x27;test&#x27;</span>@<span class="string">&#x27;localhost&#x27;</span> identified <span class="keyword">by</span> <span class="string">&#x27;1234&#x27;</span>; </span><br><span class="line">mysql&gt; flush <span class="keyword">privileges</span>; #刷新系统权限表</span><br><span class="line"></span><br><span class="line"># 授权test用户拥有所有数据库的某些权限： 　</span><br><span class="line">mysql&gt; <span class="keyword">grant</span> <span class="keyword">select</span>,<span class="keyword">delete</span>,<span class="keyword">update</span>,<span class="keyword">create</span>,<span class="keyword">drop</span> <span class="keyword">on</span> . <span class="keyword">to</span> test@<span class="string">&#x27;%&#x27;</span> identified <span class="keyword">by</span> <span class="string">&#x27;1234&#x27;</span>;    #<span class="string">&#x27;%&#x27;</span> 表示对所有非本地主机授权，不包括localhost</span><br><span class="line">mysql&gt; flush <span class="keyword">privileges</span>; #刷新系统权限表</span><br></pre></td></tr></table></figure>
+
+<ol start="4">
+<li>删除用户<figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"># 删除用户</span><br><span class="line">mysql -u root -p </span><br><span class="line">mysql&gt; <span class="keyword">delete</span> <span class="keyword">from</span> mysql.<span class="keyword">user</span> <span class="keyword">where</span> <span class="keyword">user</span> =<span class="string">&#x27;test&#x27;</span> <span class="keyword">and</span> host =<span class="string">&#x27;localhost&#x27;</span>;</span><br><span class="line">mysql&gt; flush <span class="keyword">privileges</span>;</span><br><span class="line">mysql&gt; <span class="keyword">drop</span> <span class="keyword">database</span> testdb;</span><br><span class="line"></span><br><span class="line"># 删除账户及权限：</span><br><span class="line">mysql&gt; <span class="keyword">drop</span> <span class="keyword">user</span> 用户名@<span class="string">&#x27;%&#x27;</span>; </span><br><span class="line">mysql&gt; <span class="keyword">drop</span> <span class="keyword">user</span> 用户名@localhost;</span><br></pre></td></tr></table></figure></li>
+<li>修改指定用户密码<figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">mysql -u root -p </span><br><span class="line">mysql&gt; <span class="keyword">update</span> mysql.<span class="keyword">user</span> <span class="keyword">set</span> authentication_string = <span class="keyword">password</span>(<span class="string">&#x27;test_auth_remote&#x27;</span>) <span class="keyword">where</span> <span class="keyword">user</span>=<span class="string">&#x27;test_auth&#x27;</span> <span class="keyword">and</span> host= <span class="string">&#x27;%&#x27;</span>;</span><br><span class="line">mysql&gt; flush <span class="keyword">privileges</span>;</span><br></pre></td></tr></table></figure></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+        <div class="reward-container">
+  <div></div>
+  <button onclick="var qr = document.getElementById('qr'); qr.style.display = (qr.style.display === 'none') ? 'block' : 'none';">
+    打赏
+  </button>
+  <div id="qr" style="display: none;">
+      
+      <div style="display: inline-block;">
+        <img src="/images/wechatpay.jpg" alt="YueXian 微信支付">
+        <p>微信支付</p>
+      </div>
+
+  </div>
+</div>
+
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>YueXian
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="https://yuexianhu.gitee.io/article/b2a45c8d.html" title="CentOS7安装MySQL5.7">https://yuexianhu.gitee.io/article/b2a45c8d.html</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/MySQL/" rel="tag"><i class="fa fa-tag"></i> MySQL</a>
+              <a href="/tags/Linux/" rel="tag"><i class="fa fa-tag"></i> Linux</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/article/1107f857.html" rel="prev" title="Redis进阶（Linux）">
+      <i class="fa fa-chevron-left"></i> Redis进阶（Linux）
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/article/dd7691d3.html" rel="next" title="MySQL逻辑架构和存储引擎">
+      MySQL逻辑架构和存储引擎 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#MySQL%E4%B8%8B%E8%BD%BD"><span class="nav-number">1.</span> <span class="nav-text">MySQL下载</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%8E%AF%E5%A2%83%E6%A3%80%E6%B5%8B"><span class="nav-number">2.</span> <span class="nav-text">环境检测</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%89%E8%A3%85"><span class="nav-number">3.</span> <span class="nav-text">安装</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AD%97%E7%AC%A6%E9%9B%86"><span class="nav-number">4.</span> <span class="nav-text">字符集</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%98%B2%E7%81%AB%E5%A2%99"><span class="nav-number">5.</span> <span class="nav-text">防火墙</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9D%83%E9%99%90"><span class="nav-number">6.</span> <span class="nav-text">权限</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="YueXian"
+      src="/images/avatar-yx.png">
+  <p class="site-author-name" itemprop="name">YueXian</p>
+  <div class="site-description" itemprop="description">关山难越,谁悲失路之人;萍水相逢,尽是他乡之客!</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">13</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/YueXIanHu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;YueXIanHu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title"><i class="fa fa-link fa-fw"></i>
+      Links
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="http://www.baidu.com/" title="http:&#x2F;&#x2F;www.baidu.com" rel="noopener" target="_blank">baidu</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2018 – 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">YueXian</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">39k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">1:11</span>
+</div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

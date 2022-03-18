@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-yx.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-yx.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="/lib/pace/pace-theme-center-atom.min.css">
+  <script src="/lib/pace/pace.min.js"></script>
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yuexianhu.gitee.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"./public/search.xml"};
+  </script>
+
+  <meta name="description" content="本文纪录了MySQL逻辑架构、并发控制、事务和事务特性、多版本控制等内容，并介绍了两种常用存储引擎。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MySQL架构">
+<meta property="og:url" content="https://yuexianhu.gitee.io/article/4d89fc03.html">
+<meta property="og:site_name" content="YueXian">
+<meta property="og:description" content="本文纪录了MySQL逻辑架构、并发控制、事务和事务特性、多版本控制等内容，并介绍了两种常用存储引擎。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gitee.com/YueXianHu/images/raw/master/img/%E9%AB%98%E6%80%A7%E8%83%BDMySQL-MySQL%E6%9E%B6%E6%9E%84.md_1.png">
+<meta property="article:published_time" content="2020-07-22T13:44:12.000Z">
+<meta property="article:modified_time" content="2022-03-18T09:55:41.444Z">
+<meta property="article:author" content="YueXian">
+<meta property="article:tag" content="高性能MySQL">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gitee.com/YueXianHu/images/raw/master/img/%E9%AB%98%E6%80%A7%E8%83%BDMySQL-MySQL%E6%9E%B6%E6%9E%84.md_1.png">
+
+<link rel="canonical" href="https://yuexianhu.gitee.io/article/4d89fc03.html">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>MySQL架构 | YueXian</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">YueXian</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">YueXian的博客</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://yuexianhu.gitee.io/article/4d89fc03.html">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar-yx.png">
+      <meta itemprop="name" content="YueXian">
+      <meta itemprop="description" content="关山难越,谁悲失路之人;萍水相逢,尽是他乡之客!">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="YueXian">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          MySQL架构
+        </h1>
+
+        <div class="post-meta">
+
+          
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-07-22 21:44:12" itemprop="dateCreated datePublished" datetime="2020-07-22T21:44:12+08:00">2020-07-22</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-03-18 17:55:41" itemprop="dateModified" datetime="2022-03-18T17:55:41+08:00">2022-03-18</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/MySQL/" itemprop="url" rel="index"><span itemprop="name">MySQL</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>3.4k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>6 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>本文纪录了MySQL逻辑架构、并发控制、事务和事务特性、多版本控制等内容，并介绍了两种常用存储引擎。</p>
+<!-- 前言 -->
+
+
+
+<span id="more"></span>
+
+
+<h2 id="MySQL逻辑架构"><a href="#MySQL逻辑架构" class="headerlink" title="MySQL逻辑架构"></a>MySQL逻辑架构</h2><p><img src="https://gitee.com/YueXianHu/images/raw/master/img/%E9%AB%98%E6%80%A7%E8%83%BDMySQL-MySQL%E6%9E%B6%E6%9E%84.md_1.png" alt="MySQL服务器逻辑架构图"><br>MySQL主要有三层组成：</p>
+<ol>
+<li>第一层负责连接处理、授权认证、安全等等，并不是MySQL所独有的。<br>每个客户端的连接都对应着服务器上的一个线程。服务器上维护了一个线程池，避免为每个连接都创建销毁一个线程。当客户端连接到MySQL服务器时，服务器对其进行认证。可以通过用户名和密码的方式进行认证，可以通过SSL证书进行认证。登录认证过后，服务器还会验证该客户端是否具有执行某个查询的权限。</li>
+<li>第二层负责解析查询（编译SQL），并对其进行优化（如调整表的读取顺序，选择合适的索引等）。对于SELECT语句，在解析查询之前，服务器会先检查查询缓存，如果能在其中找到对应的查询结果，则无需再进行查询解析、优化等过程，直接返回结果。存储过程、触发器、视图等都在这一层实现。</li>
+<li>第三层是存储引擎。存储引擎负责MySQL中数据的存储和提取、开启一个事务等等。存储引擎通过API与上层进行通信，这些接口屏蔽了不同存储引擎之间的差异，使得这些差异对上层的查询过程透明。存储引擎不会去解析SQL。</li>
+</ol>
+<h2 id="并发控制"><a href="#并发控制" class="headerlink" title="并发控制"></a>并发控制</h2><p>无论何时，只要有多个查询需要在同一个时刻修改数据，都会产生并发控制的问题。</p>
+<h3 id="读写锁"><a href="#读写锁" class="headerlink" title="读写锁"></a>读写锁</h3><p>在处理并发读或者写时，可以通过实现一个有两种类型的锁组成的锁系统来解决问题。这两种类型的锁通常被称为共享锁（shared lock）和排他锁（exclusive lock），也叫读锁（read lock）和写锁（write lock）。<br>读锁：读锁是共享的，或者说是相互不阻塞的。<br>写锁：写锁是排他的，也就是说一个写锁会阻塞其他的写锁和读锁。</p>
+<h3 id="锁粒度"><a href="#锁粒度" class="headerlink" title="锁粒度"></a>锁粒度</h3><p>一种提高共享资源并发性的方式就是让锁定对象更有选择性。尽量只锁定需要修改的部分，而不是所有资源。锁定的数据量越少，并发程度越高，只要相互之间不发生冲突即可。问题是加锁也需要消耗资源，这时就需要锁策略，就是在锁的开销和数据的安全性之间寻求平衡。每种MySQL存储引擎都可以实现自己的锁策略和锁粒度。MySQL有两种重要的锁策略表锁和行级锁。<br><strong>表锁</strong>：MySQL最基本的锁策略，并且开销最小，它会锁定整张表。<br><strong>行级锁</strong>：行级锁可以最大程度支持并发处理（同时也带来了最大的锁开销）。行级锁只在存储引擎层实现，而MySQL服务层没有实现。</p>
+<p>单表加锁的命令：</p>
+<figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">格式：<span class="keyword">LOCK</span> <span class="keyword">TABLES</span> tbl_name &#123;<span class="keyword">READ</span> | <span class="keyword">WRITE</span>&#125;,[ tbl_name &#123;<span class="keyword">READ</span> | <span class="keyword">WRITE</span>&#125;,……] </span><br><span class="line">例子：<span class="keyword">lock</span> <span class="keyword">tables</span> db_a.tbl_aaa <span class="keyword">read</span>; 　　// 锁定了db_a库中的tbl_aaa表</span><br><span class="line">解锁：unlock <span class="keyword">tables</span>; </span><br></pre></td></tr></table></figure>
+<h2 id="事务"><a href="#事务" class="headerlink" title="事务"></a>事务</h2><p>事务内的语句，要么全部执行成功，要么全部执行失败。就像锁粒度的升级一样，事务会增加系统的开销，用来保证事务的安全性。MySQL默认采用自动提交（AUTOCOMMIT）模式，可以通过一下命令开启</p>
+<figure class="highlight asciidoc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">mysql&gt; show variables like &#x27;autocommit&#x27;;</span></span><br><span class="line"><span class="section">+---------------+-------+</span></span><br><span class="line"><span class="section">| Variable_name | Value |</span></span><br><span class="line"><span class="section">+---------------+-------+</span></span><br><span class="line"><span class="section">| autocommit    | ON    |</span></span><br><span class="line"><span class="section">+---------------+-------+</span></span><br><span class="line">1 row in set (0.00 sec)</span><br><span class="line"><span class="code"> </span></span><br><span class="line">mysql&gt; set autocommit =1;</span><br></pre></td></tr></table></figure>
+
+<h3 id="事务的特性"><a href="#事务的特性" class="headerlink" title="事务的特性"></a>事务的特性</h3><ul>
+<li>原子性（atomicity）：一个事务必须被视为一个不可分割的最小工作单元，整个事务中的所有操作要么全部提交成功，要么全部失败回滚，对于一个事务来说，不可能只执行其中的一部分操作。</li>
+<li>一致性（consistency）：数据库总是从一个一致性的状态转换到另一个一致性的状态。</li>
+<li>隔离性（isolation）：通常来说，一个事务所作的修改在最终提交之前，对其他事务时不可见的。</li>
+<li>持久性（durability）：一旦事务提交，则其所做的修改就会永远保存到数据库。</li>
+</ul>
+<p>开启事务的语句</p>
+<figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">START</span> <span class="keyword">TRANSACTION</span>;</span><br><span class="line"><span class="keyword">insert</span>、<span class="keyword">update</span>语句;</span><br><span class="line"><span class="keyword">COMMIT</span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="事务的隔离级别"><a href="#事务的隔离级别" class="headerlink" title="事务的隔离级别"></a>事务的隔离级别</h3><p>数据库事务的隔离级别有4种，由低到高分别为Read uncommitted 、Read committed 、Repeatable read 、Serializable。MySQL默认的是Repeatable read。而且，在事务的并发操作中可能会出现脏读，不可重复读，幻读。</p>
+<ul>
+<li>Read uncommitted（读未提交）<br>事务中的修改，即使没有提交，对其他事务也是可见的。事务可以读取未提交的数据，也称脏读。在实际应用中很少使用。<br>例如事务A修改了账户金额，在未提交时，事务B读取了账户金额，若事务A回滚事务，事务B读取了未提交的数据，即脏读。</li>
+<li>Read committed（读提交）<br>一个事务只能读取已经提交的事务所做的操作。即一个事务从开始直到提交之前，所作的任何修改对其他事务都是不可见的。<br>例如事务A在修改账户金额前查看了账户金额，事务B这时修改了账户金额，因为事务操作时不可见，当事务A修改金额时发现账户金额改动。出现了一个事务中两个相同查询得到不同的结果，即不可重复读。针对的时UPDATE操作。</li>
+<li>Repeatable read（重复读）<br>在开始读取数据（事务开启）时，不再允许修改操作。当前事务在读取某个范围内的纪录时，另一个事务在该范围内插入了新的纪录，之前的事务再次读取该范围的纪录时，产生幻读。针对的时INSERT操作。</li>
+<li>Serializable（序列化）<br>Serializable是最高的事务隔离级别，在该级别下，事务串行化顺序执行，可以避免脏读、不可重复读与幻读。Serializable会在读取的每一行数据上加锁，这种事务隔离级别效率低下，比较耗数据库性能，一般不使用。</li>
+</ul>
+<h3 id="死锁"><a href="#死锁" class="headerlink" title="死锁"></a>死锁</h3><p>死锁是指两个或者多个事务在同一资源上相互占用，并请求锁定对方占用的资源，从而导致恶行循环的现象。当多个事务试图以不同的顺序锁定资源时，就可能会产生死锁。<br>数据库系统实现了各种死锁检测和死锁超时机制。</p>
+<h3 id="事务日志"><a href="#事务日志" class="headerlink" title="事务日志"></a>事务日志</h3><p>InnoDB的事务日志主要分为redo log(重做日志，提供前滚操作)和undo log(回滚日志，提供回滚操作)，为了最大程度上减少数据写入时io问题，在存储引擎修改表的数据时，会将数据从磁盘拷贝到内存中，然后修改内存中的数据拷贝，再将修改行为持久化到磁盘中（先写redo log buffer(日志缓冲区),再定期批量写入），而不用每次将修改的数据本身持久化到硬盘中。</p>
+<h2 id="多版本并发控制（MVCC）"><a href="#多版本并发控制（MVCC）" class="headerlink" title="多版本并发控制（MVCC）"></a>多版本并发控制（MVCC）</h2><p>InnoDB的MVCC，通过在每行纪录后面保存两个隐藏的列来实现的。这两个列，一个保存了行的创建时间，一个保存了行的过期时间（或删除时间）。存储的并不是实际的时间值，而是系统版本号。每开始一个新的事务，系统版本号都会自动递增。事务开始时刻的系统版本号会作为事务的版本号，用来和查询到的每行纪录的版本号进行比较。在REPEATABLE READ隔离级别下，MVCC具体的操作如下：</p>
+<ul>
+<li>SELECT <br>InnoDB会根据以下两个条件检查每行纪录： <br>  a. InnoDB只查找版本早于当前事务版本的数据行（行的系统版本号小于或等于事务的系统版本号），这样可以确保事务读取的行，要么是在事务开始前已经存在的，要么是事务自身插入或者修改过的。<br>  b. 行的删除版本，要么未定义，要么大于当前事务版本号。这样可以确保事务读取到的行，在事务开始之前未被删除。</li>
+<li>INSERT<br>InnoDB为新增的每行保存当前系统版本号作为行版本号。</li>
+<li>DELETE<br>InnoDB为删除的每行保存当前系统版本号作为行删除标识。</li>
+<li>UPDATE<br>InnoDB为插入一行新纪录，保存当前系统版本号作为行版本号，同时保存当前系统版本号到原来的行作为删除标识。</li>
+</ul>
+<h2 id="MySQL的存储引擎"><a href="#MySQL的存储引擎" class="headerlink" title="MySQL的存储引擎"></a>MySQL的存储引擎</h2><p>MySQL默认使用InnoDB</p>
+<table>
+<thead>
+<tr>
+<th>对比项</th>
+<th>MyISAM</th>
+<th>InnoDB</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>外键</td>
+<td>不支持</td>
+<td>支持</td>
+</tr>
+<tr>
+<td>事务</td>
+<td>不支持</td>
+<td>支持</td>
+</tr>
+<tr>
+<td>行表锁</td>
+<td>表锁，即使操作一条纪录也会锁住整个表，不适合高并发操作</td>
+<td>行锁，操作时只锁定某一行，不对其他行有影响</td>
+</tr>
+<tr>
+<td>缓存</td>
+<td>只缓存索引，不缓存真是数据</td>
+<td>不仅缓存索引还要缓存真实数据，对内存要求较高，而且内存大小对性能有决定行的影响</td>
+</tr>
+<tr>
+<td>关注点</td>
+<td>节省资源、消耗少、简单业务</td>
+<td>并发写、事务、更大资源</td>
+</tr>
+<tr>
+<td>默认安装</td>
+<td>Y</td>
+<td>Y</td>
+</tr>
+<tr>
+<td>默认使用</td>
+<td>Y</td>
+<td>Y</td>
+</tr>
+<tr>
+<td>自带系统表使用</td>
+<td>Y</td>
+<td>N</td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+        <div class="reward-container">
+  <div></div>
+  <button onclick="var qr = document.getElementById('qr'); qr.style.display = (qr.style.display === 'none') ? 'block' : 'none';">
+    打赏
+  </button>
+  <div id="qr" style="display: none;">
+      
+      <div style="display: inline-block;">
+        <img src="/images/wechatpay.jpg" alt="YueXian 微信支付">
+        <p>微信支付</p>
+      </div>
+
+  </div>
+</div>
+
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>YueXian
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="https://yuexianhu.gitee.io/article/4d89fc03.html" title="MySQL架构">https://yuexianhu.gitee.io/article/4d89fc03.html</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/%E9%AB%98%E6%80%A7%E8%83%BDMySQL/" rel="tag"><i class="fa fa-tag"></i> 高性能MySQL</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/article/b7476c08.html" rel="prev" title="Nacos部署配置（Linux）">
+      <i class="fa fa-chevron-left"></i> Nacos部署配置（Linux）
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/article/d87f7e0c.html" rel="next" title="Schema与数据类型优化">
+      Schema与数据类型优化 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#MySQL%E9%80%BB%E8%BE%91%E6%9E%B6%E6%9E%84"><span class="nav-number">1.</span> <span class="nav-text">MySQL逻辑架构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B9%B6%E5%8F%91%E6%8E%A7%E5%88%B6"><span class="nav-number">2.</span> <span class="nav-text">并发控制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%AF%BB%E5%86%99%E9%94%81"><span class="nav-number">2.1.</span> <span class="nav-text">读写锁</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%94%81%E7%B2%92%E5%BA%A6"><span class="nav-number">2.2.</span> <span class="nav-text">锁粒度</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8B%E5%8A%A1"><span class="nav-number">3.</span> <span class="nav-text">事务</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8B%E5%8A%A1%E7%9A%84%E7%89%B9%E6%80%A7"><span class="nav-number">3.1.</span> <span class="nav-text">事务的特性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8B%E5%8A%A1%E7%9A%84%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB"><span class="nav-number">3.2.</span> <span class="nav-text">事务的隔离级别</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%AD%BB%E9%94%81"><span class="nav-number">3.3.</span> <span class="nav-text">死锁</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8B%E5%8A%A1%E6%97%A5%E5%BF%97"><span class="nav-number">3.4.</span> <span class="nav-text">事务日志</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A4%9A%E7%89%88%E6%9C%AC%E5%B9%B6%E5%8F%91%E6%8E%A7%E5%88%B6%EF%BC%88MVCC%EF%BC%89"><span class="nav-number">4.</span> <span class="nav-text">多版本并发控制（MVCC）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#MySQL%E7%9A%84%E5%AD%98%E5%82%A8%E5%BC%95%E6%93%8E"><span class="nav-number">5.</span> <span class="nav-text">MySQL的存储引擎</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="YueXian"
+      src="/images/avatar-yx.png">
+  <p class="site-author-name" itemprop="name">YueXian</p>
+  <div class="site-description" itemprop="description">关山难越,谁悲失路之人;萍水相逢,尽是他乡之客!</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">13</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/YueXIanHu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;YueXIanHu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title"><i class="fa fa-link fa-fw"></i>
+      Links
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="http://www.baidu.com/" title="http:&#x2F;&#x2F;www.baidu.com" rel="noopener" target="_blank">baidu</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2018 – 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">YueXian</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">39k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">1:11</span>
+</div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
