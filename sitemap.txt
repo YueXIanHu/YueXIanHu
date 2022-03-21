@@ -1,3 +1,6 @@
+https://yuexianhu.github.io/tags/index.html
+https://yuexianhu.github.io/categories/index.html
+https://yuexianhu.github.io/about/index.html
 https://yuexianhu.github.io/article/d87f7e0c.html
 https://yuexianhu.github.io/article/4d89fc03.html
 https://yuexianhu.github.io/article/b7476c08.html
@@ -11,9 +14,6 @@ https://yuexianhu.github.io/article/2b6be590.html
 https://yuexianhu.github.io/article/bd46367b.html
 https://yuexianhu.github.io/article/8182c632.html
 https://yuexianhu.github.io/article/f7d8f47a.html
-https://yuexianhu.github.io/categories/index.html
-https://yuexianhu.github.io/about/index.html
-https://yuexianhu.github.io/tags/index.html
 https://yuexianhu.github.io/
 https://yuexianhu.github.io/tags/MySQL/
 https://yuexianhu.github.io/tags/Linux/
