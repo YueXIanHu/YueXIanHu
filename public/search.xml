@@ -4,6 +4,31 @@
   
     
     <entry>
+      <title>SpringCloud-概述</title>
+      <link href="/article/fa560b48.html"/>
+      <url>/article/fa560b48.html</url>
+      
+        <content type="html"><![CDATA[<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>Spring Cloud 是一款基于 Spring Boot 实现的微服务框架。Spring Cloud 源自 Spring 社区，主要由 Pivotal 和 Netflix 两大公司提供技术迭代和维护。</p><!-- 前言 --><span id="more"></span><h2 id="参考内容"><a href="#参考内容" class="headerlink" title="参考内容"></a>参考内容</h2><p><a href="https://spring.io/projects/spring-cloud">https://spring.io/projects/spring-cloud</a></p><p><a href="http://c.biancheng.net/springcloud/">http://c.biancheng.net/springcloud/</a></p><p><a href="https://blog.didispace.com/spring-cloud-learning/">https://blog.didispace.com/spring-cloud-learning/</a></p><p><a href="http://www.ityouknow.com/spring-cloud.html">http://www.ityouknow.com/spring-cloud.html</a></p><p><a href="https://www.bookstack.cn/read/spring-cloud-docs/docs-index.md">https://www.bookstack.cn/read/spring-cloud-docs/docs-index.md</a></p><p><a href="https://blog.csdn.net/m0_37787662/article/details/124632591">https://blog.csdn.net/m0_37787662/article/details/124632591</a></p>]]></content>
+      
+      
+      <categories>
+          
+          <category> SpringCloud </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> SpringCloud </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>k8s-kubeadm安装k8s</title>
       <link href="/article/3114ce5f.html"/>
       <url>/article/3114ce5f.html</url>
